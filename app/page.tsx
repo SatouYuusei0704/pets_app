@@ -1,8 +1,9 @@
-'use client'; // Next.jsでボタンクリックなどの「動き」を出すために必須の1行です
+'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { db } from './firebase'; 
+import { collection, addDoc } from 'firebase/firestore'; 
 
-// 1. TypeScriptの型定義
 interface DogFood {
   id: string;
   name: string;
@@ -10,17 +11,21 @@ interface DogFood {
 }
 
 export default function Home() {
-  // 2. サンプルのフードデータ
   const sampleFood: DogFood = {
     id: 'food_01',
     name: 'チキン風味カリカリ（成犬用）',
     caloriesPer100g: 350,
   };
 
-  // 3. 与えた量（g）の状態管理
   const [amount, setAmount] = useState<number>(0);
+  const [status, setStatus] = useState<string>('standby'); // standby, saving, success, error
+  const [mounted, setMounted] = useState<boolean>(false);
 
-  // 4. カロリー計算ロジック
+  // 画面がブラウザで完全に読み込まれるまで待つ安全装置
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const calculateCalories = (grams: number, kCalPer100g: number): number => {
     if (grams <= 0) return 0;
     return Math.round((grams / 100) * kCalPer100g);
@@ -28,28 +33,58 @@ export default function Home() {
 
   const totalCalories = calculateCalories(amount, sampleFood.caloriesPer100g);
 
-  // 5. Tailwind CSS を使ったスタイリッシュな画面デザイン
+  // Firebaseにデータを保存する関数
+  const handleSave = async () => {
+    if (amount <= 0) {
+      alert('与えた量を入力してください');
+      return;
+    }
+    
+    setStatus('saving');
+
+    try {
+      // meals という本棚（コレクション）にデータを追加する
+      await addDoc(collection(db, 'meals'), {
+        date: new Date().toISOString().split('T')[0], // 今日（YYYY-MM-DD）
+        amountGrams: amount,
+        totalCalories: totalCalories,
+        createdAt: new Date()
+      });
+      setStatus('success');
+      // 3秒後にステータスを待機状態に戻す
+      setTimeout(() => setStatus('standby'), 3000);
+    } catch (error) {
+      console.error('Firebase保存エラー:', error);
+      setStatus('error');
+    }
+  };
+
+  // 準備ができる前は待機中であることを明示
+  if (!mounted) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'sans-serif', color: '#666' }}>
+        アプリを起動中...
+      </div>
+    );
+  }
+
   return (
-    <main className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white shadow-lg rounded-2xl p-6 border border-gray-100">
+    <main style={{ minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', fontFamily: 'sans-serif' }}>
+      <div style={{ width: '100%', maxWidth: '440px', backgroundColor: '#ffffff', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', borderRadius: '16px', padding: '24px', boxSizing: 'border-box' }}>
         
-        {/* ヘッダー */}
-        <h2 className="text-2xl font-bold text-gray-800 text-center mb-6 flex items-center justify-center gap-2">
+        <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#1f2937', textAlign: 'center', margin: '0 0 24px 0' }}>
           🐾 ごはんのカロリー計算
         </h2>
         
-        {/* フード情報表示ボックス */}
-        <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 mb-6">
-          <p className="text-sm font-semibold text-orange-800 mb-1">現在のフード</p>
-          <p className="text-gray-700 font-medium">
-            {sampleFood.name} 
-            <span className="text-sm text-gray-500 font-normal ml-2">({sampleFood.caloriesPer100g} kcal / 100g)</span>
+        <div style={{ backgroundColor: '#fff7ed', border: '1px solid #ffedd5', borderRadius: '12px', padding: '16px', marginBottom: '24px' }}>
+          <p style={{ fontSize: '14px', fontWeight: 'bold', color: '#9a3412', margin: '0 0 4px 0' }}>現在のフード</p>
+          <p style={{ color: '#374151', margin: 0, fontWeight: '500' }}>
+            {sampleFood.name} <span style={{ fontSize: '14px', color: '#6b7280', fontWeight: 'normal' }}>({sampleFood.caloriesPer100g} kcal / 100g)</span>
           </p>
         </div>
 
-        {/* 入力フォーム */}
-        <div className="mb-6">
-          <label className="block text-sm font-bold text-gray-700 mb-2">
+        <div style={{ marginBottom: '24px' }}>
+          <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', color: '#374151', marginBottom: '8px' }}>
             与えた量 (g) を入力してください
           </label>
           <input 
@@ -57,24 +92,26 @@ export default function Home() {
             placeholder="例: 50"
             value={amount || ''} 
             onChange={(e) => setAmount(Number(e.target.value))} 
-            className="w-full px-4 py-3 text-lg border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900"
+            style={{ width: '100%', padding: '12px 16px', fontSize: '18px', border: '1px solid #d1d5db', borderRadius: '12px', boxSizing: 'border-box', outline: 'none' }}
           />
         </div>
 
-        {/* 計算結果表示ボックス */}
-        <div className="bg-blue-50 rounded-xl p-5 text-center mb-6 border border-blue-100">
-          <span className="text-xs font-semibold text-blue-600 tracking-wider uppercase">計算された総カロリー</span>
-          <h3 className="text-4xl font-black text-blue-700 mt-1">
-            {totalCalories} <span className="text-xl font-bold">kcal</span>
+        <div style={{ backgroundColor: '#eff6ff', borderRadius: '12px', padding: '20px', marginBottom: '24px', border: '1px solid #dbeafe', textAlign: 'center' }}>
+          <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#2563eb', letterSpacing: '0.05em' }}>計算された総カロリー</span>
+          <h3 style={{ fontSize: '36px', fontWeight: '900', color: '#1d4ed8', margin: '4px 0 0 0' }}>
+            {totalCalories} <span style={{ fontSize: '20px', fontWeight: 'bold' }}>kcal</span>
           </h3>
         </div>
 
-        {/* Firebase保存用ボタン */}
         <button 
-          onClick={() => alert(`【保存準備OK】\n量: ${amount}g\nカロリー: ${totalCalories}kcal\nこの内容をFirebaseに保存する設定へ進みましょう！`)}
-          className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3.5 rounded-xl transition duration-200 shadow-md hover:shadow-lg active:scale-[0.98]"
+          onClick={handleSave}
+          disabled={status === 'saving'}
+          style={{ width: '100%', backgroundColor: status === 'saving' ? '#9ca3af' : (status === 'success' ? '#10b981' : '#f97316'), color: '#ffffff', fontWeight: 'bold', padding: '14px', borderRadius: '12px', border: 'none', fontSize: '16px', cursor: status === 'saving' ? 'not-allowed' : 'pointer', transition: 'background-color 0.2s' }}
         >
-          この内容で記録する
+          {status === 'standby' && 'この内容で記録する'}
+          {status === 'saving' && '保存中... ⏳'}
+          {status === 'success' && '保存完了！ ✅'}
+          {status === 'error' && '保存失敗 ❌ 再試行'}
         </button>
 
       </div>
