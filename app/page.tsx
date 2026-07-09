@@ -1,65 +1,83 @@
-import Image from "next/image";
+'use client'; // Next.jsでボタンクリックなどの「動き」を出すために必須の1行です
+
+import React, { useState } from 'react';
+
+// 1. TypeScriptの型定義
+interface DogFood {
+  id: string;
+  name: string;
+  caloriesPer100g: number;
+}
 
 export default function Home() {
+  // 2. サンプルのフードデータ
+  const sampleFood: DogFood = {
+    id: 'food_01',
+    name: 'チキン風味カリカリ（成犬用）',
+    caloriesPer100g: 350,
+  };
+
+  // 3. 与えた量（g）の状態管理
+  const [amount, setAmount] = useState<number>(0);
+
+  // 4. カロリー計算ロジック
+  const calculateCalories = (grams: number, kCalPer100g: number): number => {
+    if (grams <= 0) return 0;
+    return Math.round((grams / 100) * kCalPer100g);
+  };
+
+  const totalCalories = calculateCalories(amount, sampleFood.caloriesPer100g);
+
+  // 5. Tailwind CSS を使ったスタイリッシュな画面デザイン
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <main className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-md bg-white shadow-lg rounded-2xl p-6 border border-gray-100">
+        
+        {/* ヘッダー */}
+        <h2 className="text-2xl font-bold text-gray-800 text-center mb-6 flex items-center justify-center gap-2">
+          🐾 ごはんのカロリー計算
+        </h2>
+        
+        {/* フード情報表示ボックス */}
+        <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 mb-6">
+          <p className="text-sm font-semibold text-orange-800 mb-1">現在のフード</p>
+          <p className="text-gray-700 font-medium">
+            {sampleFood.name} 
+            <span className="text-sm text-gray-500 font-normal ml-2">({sampleFood.caloriesPer100g} kcal / 100g)</span>
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        {/* 入力フォーム */}
+        <div className="mb-6">
+          <label className="block text-sm font-bold text-gray-700 mb-2">
+            与えた量 (g) を入力してください
+          </label>
+          <input 
+            type="number" 
+            placeholder="例: 50"
+            value={amount || ''} 
+            onChange={(e) => setAmount(Number(e.target.value))} 
+            className="w-full px-4 py-3 text-lg border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900"
+          />
         </div>
-      </main>
-    </div>
+
+        {/* 計算結果表示ボックス */}
+        <div className="bg-blue-50 rounded-xl p-5 text-center mb-6 border border-blue-100">
+          <span className="text-xs font-semibold text-blue-600 tracking-wider uppercase">計算された総カロリー</span>
+          <h3 className="text-4xl font-black text-blue-700 mt-1">
+            {totalCalories} <span className="text-xl font-bold">kcal</span>
+          </h3>
+        </div>
+
+        {/* Firebase保存用ボタン */}
+        <button 
+          onClick={() => alert(`【保存準備OK】\n量: ${amount}g\nカロリー: ${totalCalories}kcal\nこの内容をFirebaseに保存する設定へ進みましょう！`)}
+          className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3.5 rounded-xl transition duration-200 shadow-md hover:shadow-lg active:scale-[0.98]"
+        >
+          この内容で記録する
+        </button>
+
+      </div>
+    </main>
   );
 }
